@@ -10,24 +10,24 @@ const gpa = util.gpa;
 
 const data = @embedFile("data/day01.txt");
 const example =
-\\1000
-\\2000
-\\3000
-\\
-\\4000
-\\
-\\5000
-\\6000
-\\
-\\7000
-\\8000
-\\9000
-\\
-\\10000
+    \\1000
+    \\2000
+    \\3000
+    \\
+    \\4000
+    \\
+    \\5000
+    \\6000
+    \\
+    \\7000
+    \\8000
+    \\9000
+    \\
+    \\10000
 ;
 
 pub fn main() !void {
-    const Item = struct{index: u32, value: u32};
+    const Item = struct { index: u32, value: u32 };
     const input: []Item = blk: {
         var iter = split(u8, data, "\n");
         var list = List(Item).init(gpa);
@@ -40,12 +40,12 @@ pub fn main() !void {
                 index += 1;
             } else {
                 const n = try parseInt(u32, st, 10);
-                try list.append(.{.index = index, .value = n });
+                try list.append(.{ .index = index, .value = n });
             }
         }
         break :blk list.toOwnedSlice();
     };
-    
+
     // part 1
     {
         // sum the items grouped by index
@@ -54,7 +54,7 @@ pub fn main() !void {
             if (item.index >= sums.items.len) {
                 try sums.append(item.value);
             } else {
-                sums.items[sums.items.len-1] += item.value;
+                sums.items[sums.items.len - 1] += item.value;
             }
         }
 
@@ -75,7 +75,7 @@ pub fn main() !void {
             if (item.index >= sums.items.len) {
                 try sums.append(item.value);
             } else {
-                sums.items[sums.items.len-1] += item.value;
+                sums.items[sums.items.len - 1] += item.value;
             }
         }
 
