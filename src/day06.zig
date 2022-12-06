@@ -15,37 +15,41 @@ pub fn main() !void {
     const input = data;
     // const input = example;
 
+    var answer_1: usize = undefined;
+    var answer_2: usize = undefined;
+
     // part 1
     {
-        const num_chars = 4;
-        var index: usize = num_chars;
-        while (index < input.len) : (index += 1) {
-            var bitset = std.StaticBitSet(256).initEmpty();
-            for (input[index - num_chars .. index]) |b| {
-                bitset.set(b);
-            }
-            if (bitset.count() == num_chars) {
-                print("{d}\n", .{index});
-                break;
+        const window = 4;
+        var index: usize = window;
+        var bitset = std.bit_set.IntegerBitSet(26).initEmpty();
+        while (bitset.count() != window) : (index += 1) {
+            assert(index < input.len);
+            bitset.mask = 0;
+            for (input[index - window .. index]) |char| {
+                bitset.set(char - 'a');
             }
         }
+        answer_1 = index - 1;
     }
 
     // part 2
     {
-        const num_chars = 14;
-        var index: usize = num_chars;
-        while (index < input.len) : (index += 1) {
-            var bitset = std.StaticBitSet(256).initEmpty();
-            for (input[index - num_chars .. index]) |b| {
-                bitset.set(b);
-            }
-            if (bitset.count() == num_chars) {
-                print("{d}\n", .{index});
-                break;
+        const window = 14;
+        var index: usize = window;
+        var bitset = std.bit_set.IntegerBitSet(26).initEmpty();
+        while (bitset.count() != window) : (index += 1) {
+            assert(index < input.len);
+            bitset.mask = 0;
+            for (input[index - window .. index]) |char| {
+                bitset.set(char - 'a');
             }
         }
+        answer_2 = index - 1;
     }
+
+    print("{d}\n", .{answer_1});
+    print("{d}\n", .{answer_2});
 }
 
 // Useful stdlib functions
