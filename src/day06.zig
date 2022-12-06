@@ -9,9 +9,43 @@ const util = @import("util.zig");
 const gpa = util.gpa;
 
 const data = @embedFile("data/day06.txt");
+const example = "nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg";
 
 pub fn main() !void {
-    
+    const input = data;
+    // const input = example;
+
+    // part 1
+    {
+        const num_chars = 4;
+        var index: usize = num_chars;
+        while (index < input.len) : (index += 1) {
+            var bitset = std.StaticBitSet(256).initEmpty();
+            for (input[index - num_chars .. index]) |b| {
+                bitset.set(b);
+            }
+            if (bitset.count() == num_chars) {
+                print("{d}\n", .{index});
+                break;
+            }
+        }
+    }
+
+    // part 2
+    {
+        const num_chars = 14;
+        var index: usize = num_chars;
+        while (index < input.len) : (index += 1) {
+            var bitset = std.StaticBitSet(256).initEmpty();
+            for (input[index - num_chars .. index]) |b| {
+                bitset.set(b);
+            }
+            if (bitset.count() == num_chars) {
+                print("{d}\n", .{index});
+                break;
+            }
+        }
+    }
 }
 
 // Useful stdlib functions
