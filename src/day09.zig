@@ -112,6 +112,80 @@ pub fn main() !void {
         //printBoardVisits(visits);
         print("{d}\n", .{answer_1});
     }
+
+    // part 2
+    {
+        var visits = Map(Position, usize).init(gpa); // count number of times the tail visits each location
+        defer visits.deinit();
+
+        var rope = [_]Position{.{ .x = 0, .y = 0 }} ** 10;
+
+        // put start into visits map
+        try visits.put(.{ .x = 0, .y = 0 }, 1);
+
+        // printBoard2(&rope);
+
+        for (input) |cmd| {
+            //printCommand(cmd);
+            {
+                var distance = cmd.distance;
+                while (distance > 0) : (distance -= 1) {
+                    // pointers to the head of the rope and the tail of the rope
+                    var head: *Position = &rope[0];
+                    var tail: *Position = &rope[rope.len - 1];
+
+                    switch (cmd.direction) {
+                        .L => head.x -= 1,
+                        .R => head.x += 1,
+                        .U => head.y += 1,
+                        .D => head.y -= 1,
+                    }
+
+                    var index: usize = 0;
+                    while (index < rope.len - 1) : (index += 1) {
+                        // pointers to this part of the rope and the next part of the rope
+                        var this: *Position = &rope[index];
+                        var next: *Position = &rope[index + 1];
+
+                        const dx = this.x - next.x;
+                        const dy = this.y - next.y;
+                        const touching = (dx == -1 or dx == 0 or dx == 1) and
+                            (dy == -1 or dy == 0 or dy == 1);
+
+                        if (dx == 0 and !touching) {
+                            // move vertically
+                            next.x = this.x;
+                            next.y += std.math.sign(dy);
+                        } else if (dy == 0 and !touching) {
+                            // move horizontally
+                            next.x += std.math.sign(dx);
+                            next.y = this.y;
+                        } else if (!touching) {
+                            // move diagonally
+                            next.x += std.math.sign(dx);
+                            next.y += std.math.sign(dy);
+                        } else {
+                            // don't move
+                        }
+                    }
+
+                    // add visit to visits map
+                    if (visits.get(rope[rope.len - 1])) |num_visits| {
+                        try visits.put(tail.*, num_visits + 1);
+                    } else {
+                        try visits.put(tail.*, 1);
+                    }
+
+                    // printBoard2(&rope);
+                }
+            }
+        }
+
+        // count visits
+        const answer_2: usize = visits.count();
+        // printBoardVisits(visits);
+        print("{d}\n", .{answer_2});
+    }
 }
 
 fn printCommand(command: Command) void {
@@ -143,6 +217,32 @@ fn printBoard(head: Position, tail: Position) void {
                 print("s", .{})
             else
                 print(".", .{});
+        }
+        print("\n", .{});
+    }
+    print("\n", .{});
+}
+
+fn printBoard2(rope: []Position) void {
+    const height = 5;
+    const width = 6;
+
+    var i: usize = height;
+    while (i > 0) : (i -= 1) {
+        const y = i - 1;
+        var j: usize = 0;
+        while (j < width) : (j += 1) {
+            const x = j;
+            const c: u8 = for (rope) |part, index| {
+                if (part.x == x and part.y == y)
+                    switch (index) {
+                        0 => break 'H',
+                        else => break @intCast(u8, index) + '0',
+                    };
+            } else '.';
+            //            } else if (x == 0 and y == 0) 's' else '.';
+
+            print("{c}", .{c});
         }
         print("\n", .{});
     }
