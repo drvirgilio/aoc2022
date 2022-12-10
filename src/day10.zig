@@ -9,9 +9,72 @@ const util = @import("util.zig");
 const gpa = util.gpa;
 
 const data = @embedFile("data/day10.txt");
+const Operation = enum { noop, addx };
+const Instruction = union(Operation) {
+    noop: void,
+    addx: isize,
+};
 
 pub fn main() !void {
-    
+    const input: []Instruction = blk: {
+        var list = List(Instruction).init(gpa);
+        var lines = tokenize(u8, data, "\r\n");
+        while (lines.next()) |line| {
+            switch (line[0]) {
+                'n' => try list.append(Instruction{ .noop = .{} }),
+                'a' => try list.append(Instruction{ .addx = try parseInt(isize, line[5..], 10) }),
+                else => unreachable,
+            }
+        }
+        break :blk list.toOwnedSlice();
+    };
+
+    print("part 2:\n", .{});
+
+    var answer_1: isize = 0;
+    var clk: isize = 0; // using 0-indexing instead of 1-indexing
+    var x: isize = 1;
+    for (input) |inst| {
+        switch (inst) {
+            .noop => {
+                display(clk, x);
+                answer_1 += signal_strenth(clk, x);
+                clk += 1;
+
+                continue;
+            },
+            .addx => |amount| {
+                display(clk, x);
+                answer_1 += signal_strenth(clk, x);
+                clk += 1;
+
+                display(clk, x);
+                answer_1 += signal_strenth(clk, x);
+                clk += 1;
+
+                x += amount;
+                continue;
+            },
+        }
+    }
+
+    print("part 1: {}\n", .{answer_1});
+}
+
+fn display(clk: isize, x: isize) void {
+    const pixel = @mod(clk, 40);
+    switch (x - pixel) {
+        -1, 0, 1 => print("#", .{}),
+        else => print(" ", .{}),
+    }
+    if (pixel == 39) print("\n", .{});
+}
+
+fn signal_strenth(clk: isize, x: isize) isize {
+    return if (@mod(clk, 40) == 19)
+        (clk + 1) * x
+    else
+        0;
 }
 
 // Useful stdlib functions
