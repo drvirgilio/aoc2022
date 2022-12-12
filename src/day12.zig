@@ -244,173 +244,116 @@ pub fn main() !void {
     }
 
     // part 2
-    var puzzle_min_dist: usize = std.math.maxInt(usize);
-    for (input.matrix) |str_, row_| {
-        for (str_) |val_, col_| {
-            if (val_ != 'a') continue;
-            const start = Location{ .row = row_, .col = col_ };
-            // print("{}\n", .{start});
+    {
+        var puzzle_min_dist: usize = std.math.maxInt(usize);
+        const start = input.end;
 
-            const height = input.matrix.len;
-            const width = input.matrix[0].len;
+        const height = input.matrix.len;
+        const width = input.matrix[0].len;
 
-            var graph = Map(Location, IsPossible).init(gpa);
-            defer graph.deinit();
-            for (input.matrix) |str, row| {
-                for (str) |val, col| {
-                    const location = Location{ .row = row, .col = col };
-                    var is_possible: IsPossible = undefined;
+        var graph = Map(Location, IsPossible).init(gpa);
+        defer graph.deinit();
+        for (input.matrix) |str, row| {
+            for (str) |val, col| {
+                const location = Location{ .row = row, .col = col };
+                var is_possible: IsPossible = undefined;
 
-                    // north
-                    is_possible.north = if (row > 0)
-                        if (input.matrix[row - 1][col] <= val + 1) true else false
-                    else
-                        false;
+                // north
+                is_possible.north = if (row > 0)
+                    if (input.matrix[row - 1][col] + 1 >= val) true else false
+                else
+                    false;
 
-                    // south
-                    is_possible.south = if (row + 1 < height)
-                        if (input.matrix[row + 1][col] <= val + 1) true else false
-                    else
-                        false;
+                // south
+                is_possible.south = if (row + 1 < height)
+                    if (input.matrix[row + 1][col] + 1 >= val) true else false
+                else
+                    false;
 
-                    // west
-                    is_possible.west = if (col > 0)
-                        if (input.matrix[row][col - 1] <= val + 1) true else false
-                    else
-                        false;
+                // west
+                is_possible.west = if (col > 0)
+                    if (input.matrix[row][col - 1] + 1 >= val) true else false
+                else
+                    false;
 
-                    // east
-                    is_possible.east = if (col + 1 < width)
-                        if (input.matrix[row][col + 1] <= val + 1) true else false
-                    else
-                        false;
+                // east
+                is_possible.east = if (col + 1 < width)
+                    if (input.matrix[row][col + 1] + 1 >= val) true else false
+                else
+                    false;
 
-                    try graph.put(location, is_possible);
-                }
-            }
-
-            // // print graph
-            // for (input.matrix) |str, row| {
-            //     for (str) |char, col| {
-            //         // print location value
-            //         print("{c}", .{char});
-
-            //         // print east-west connections
-            //         if (col + 1 < width) {
-            //             const location = Location{ .row = row, .col = col };
-            //             const east = Location{ .row = row, .col = col + 1 };
-
-            //             const pos_this = graph.get(location).?;
-            //             const pos_east = graph.get(east).?;
-
-            //             if (pos_this.east and pos_east.west)
-            //                 print("-", .{})
-            //             else if (pos_this.east)
-            //                 print(">", .{})
-            //             else if (pos_east.west)
-            //                 print("<", .{})
-            //             else
-            //                 print(" ", .{});
-            //         }
-            //     }
-            //     print("\n", .{});
-
-            //     // print north-south connections
-            //     if (row + 1 < height) {
-            //         for (str) |_, col| {
-            //             const location = Location{ .row = row, .col = col };
-            //             const south = Location{ .row = row + 1, .col = col };
-
-            //             const pos_this = graph.get(location).?;
-            //             const pos_south = graph.get(south).?;
-
-            //             if (pos_this.south and pos_south.north)
-            //                 print("| ", .{})
-            //             else if (pos_this.south)
-            //                 print("v ", .{})
-            //             else if (pos_south.north)
-            //                 print("^ ", .{})
-            //             else
-            //                 print("  ", .{});
-            //         }
-            //         print("\n", .{});
-            //     }
-            // }
-
-            // set of unvisited nodes
-            var unvisited = Map(Location, void).init(gpa);
-            defer unvisited.deinit();
-            for (input.matrix) |str, row| {
-                for (str) |_, col| {
-                    try unvisited.put(Location{ .row = row, .col = col }, .{});
-                }
-            }
-
-            // tenative distance value for each node
-            var tentative_distance = Map(Location, usize).init(gpa);
-            defer tentative_distance.deinit();
-            for (input.matrix) |str, row| {
-                for (str) |_, col| {
-                    const dist: usize = if (start.row == row and start.col == col) 0 else std.math.maxInt(usize);
-                    try tentative_distance.put(Location{ .row = row, .col = col }, dist);
-                }
-            }
-
-            var this = start;
-            while (true) {
-                var neighbors = try List(Location).initCapacity(gpa, 4);
-                defer neighbors.deinit();
-                if (graph.get(this).?.north) try neighbors.append(this.north());
-                if (graph.get(this).?.south) try neighbors.append(this.south());
-                if (graph.get(this).?.east) try neighbors.append(this.east());
-                if (graph.get(this).?.west) try neighbors.append(this.west());
-
-                for (neighbors.items) |neighbor| {
-                    if (unvisited.get(neighbor)) |_| {
-                        const old_dist = tentative_distance.get(neighbor).?;
-                        const new_dist = tentative_distance.get(this).? + 1;
-                        try tentative_distance.put(neighbor, min(old_dist, new_dist));
-                    }
-                }
-
-                //print("visited {}\n", .{this});
-                if (unvisited.remove(this)) {} else unreachable;
-
-                // stop if there exists no path to the end
-                var unvisited_iter2 = unvisited.keyIterator();
-                const no_path: bool = while (unvisited_iter2.next()) |loc| {
-                    const dist = tentative_distance.get(loc.*).?;
-                    if (dist < std.math.maxInt(usize)) break false;
-                } else true;
-                if (no_path) break;
-
-                // stop if end is visited
-                if (unvisited.get(input.end)) |_| {} else {
-                    const total_dist = tentative_distance.get(input.end).?;
-                    if (total_dist <= puzzle_min_dist) {
-                        puzzle_min_dist = total_dist;
-                        // print("{}\n", .{puzzle_min_dist});
-                    }
-                    break;
-                }
-
-                // find node with minimum tentative distance and set current_node to that
-                var min_dist: usize = std.math.maxInt(usize);
-                // var min_dist_node: Location = undefined;
-                var unvisited_iter = unvisited.keyIterator();
-                while (unvisited_iter.next()) |location| {
-                    const dist = tentative_distance.get(location.*).?;
-                    if (dist <= min_dist) {
-                        min_dist = dist;
-                        this = location.*;
-                    }
-                }
-                if (min_dist >= puzzle_min_dist) break;
+                try graph.put(location, is_possible);
             }
         }
-    }
 
-    print("{d}\n", .{puzzle_min_dist});
+        // set of unvisited nodes
+        var unvisited = Map(Location, void).init(gpa);
+        defer unvisited.deinit();
+        for (input.matrix) |str, row| {
+            for (str) |_, col| {
+                try unvisited.put(Location{ .row = row, .col = col }, .{});
+            }
+        }
+
+        // tenative distance value for each node
+        var tentative_distance = Map(Location, usize).init(gpa);
+        defer tentative_distance.deinit();
+        for (input.matrix) |str, row| {
+            for (str) |_, col| {
+                const dist: usize = if (start.row == row and start.col == col) 0 else std.math.maxInt(usize);
+                try tentative_distance.put(Location{ .row = row, .col = col }, dist);
+            }
+        }
+
+        var this = start;
+        while (true) {
+            var neighbors = try List(Location).initCapacity(gpa, 4);
+            defer neighbors.deinit();
+            if (graph.get(this).?.north) try neighbors.append(this.north());
+            if (graph.get(this).?.south) try neighbors.append(this.south());
+            if (graph.get(this).?.east) try neighbors.append(this.east());
+            if (graph.get(this).?.west) try neighbors.append(this.west());
+
+            for (neighbors.items) |neighbor| {
+                if (unvisited.get(neighbor)) |_| {
+                    const old_dist = tentative_distance.get(neighbor).?;
+                    const new_dist = tentative_distance.get(this).? + 1;
+                    try tentative_distance.put(neighbor, min(old_dist, new_dist));
+                }
+            }
+
+            //print("visited {}\n", .{this});
+            if (unvisited.remove(this)) {} else unreachable;
+
+            // stop if there exists no path to the end
+            var unvisited_iter2 = unvisited.keyIterator();
+            const no_path: bool = while (unvisited_iter2.next()) |loc| {
+                const dist = tentative_distance.get(loc.*).?;
+                if (dist < std.math.maxInt(usize)) break false;
+            } else true;
+            if (no_path) break;
+
+            // stop if visited node is 'a'
+            if (input.matrix[this.row][this.col] == 'a') {
+                const total_dist = tentative_distance.get(this).?;
+                print("{d}\n", .{total_dist});
+                break;
+            }
+
+            // find node with minimum tentative distance and set current_node to that
+            var min_dist: usize = std.math.maxInt(usize);
+            // var min_dist_node: Location = undefined;
+            var unvisited_iter = unvisited.keyIterator();
+            while (unvisited_iter.next()) |location| {
+                const dist = tentative_distance.get(location.*).?;
+                if (dist <= min_dist) {
+                    min_dist = dist;
+                    this = location.*;
+                }
+            }
+            if (min_dist >= puzzle_min_dist) break;
+        }
+    }
 }
 
 // Useful stdlib functions
