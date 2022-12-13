@@ -218,6 +218,95 @@ pub fn main() !void {
         //print("{d} {d}\n", .{inspections[0], inspections[1]});
         print("{d}\n", .{answer_1});
     }
+
+    // part 2
+    {
+        // fill out state with input
+        var monkeys: []Monkey = blk: {
+            var list = List(Monkey).init(gpa);
+            for (input) |*old_monkey| {
+                var new_monkey: Monkey = old_monkey.*;
+                new_monkey.items = try old_monkey.items.clone();
+                try list.append(new_monkey);
+            }
+            break :blk list.toOwnedSlice();
+        };
+
+        const modulus: usize = blk: {
+            var ret: usize = 1;
+            for (monkeys) |monkey| {
+                ret *= monkey.divisor;
+            }
+            break :blk ret;
+        };
+
+        const num_rounds = 10_000;
+        var round: usize = 0;
+        while (round < num_rounds) : (round += 1) {
+            //print("=== Round {d} ===\n", .{round});
+            for (monkeys) |*monkey| {
+                //print("Monkey {d}:\n", .{index});
+                for (monkey.items.items) |*item| {
+                    monkey.inspections += 1;
+                    //print("  Monkey inspects an item with a worry level of {d}.\n", .{item.*});
+
+                    // apply operation
+                    switch (monkey.operation.op) {
+                        .mul => {
+                            if (monkey.operation.val) |val| {
+                                item.* *= val;
+                                item.* %= modulus;
+                                //print("    Worry level is multiplied by {d} to {d}.\n", .{val, item.*});
+                            } else {
+                                item.* *= item.*;
+                                item.* %= modulus;
+                                //print("    Worry level is multiplied by {d} to {d}.\n", .{item.*, item.*});
+                            }
+                        },
+                        .add => {
+                            if (monkey.operation.val) |val| {
+                                item.* += val;
+                                item.* %= modulus;
+                                //print("    Worry level increases by {d} to {d}.\n", .{val, item.*});
+                            } else {
+                                item.* += item.*;
+                                item.* %= modulus;
+                                //print("    Worry level increases by {d} to {d}.\n", .{item.*, item.*});
+                            }
+                        },
+                    }
+
+                    // check divisibility
+                    const is_divisible = item.* % monkey.divisor == 0;
+                    if (is_divisible) {
+                        //print("    Current worry level is divisible by {d}.\n", .{monkey.divisor});
+                    } else {
+                        //print("    Current worry level is not divisible by {d}.\n", .{monkey.divisor});
+                    }
+
+                    // transfer item
+                    const next_index = if (is_divisible) monkey.if_true else monkey.if_false;
+                    try monkeys[next_index].items.append(item.*);
+                    //print("    Item with worry level {d} is thrown to monkey {d}.\n", .{item.*, next_index});
+                }
+                try monkey.items.resize(0);
+            }
+        }
+
+        const inspections = blk: {
+            var list = List(usize).init(gpa);
+            for (monkeys) |monkey| {
+                //print("Monkey {d} inspected items {d} times.\n", .{index, monkey.inspections});
+                try list.append(monkey.inspections);
+            }
+            var slice = list.toOwnedSlice();
+            sort(usize, slice, {}, comptime desc(usize));
+            break :blk slice;
+        };
+        const answer_2 = inspections[0] * inspections[1];
+        //print("{d} {d}\n", .{inspections[0], inspections[1]});
+        print("{d}\n", .{answer_2});
+    }
 }
 
 // Useful stdlib functions
