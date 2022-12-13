@@ -45,6 +45,7 @@ const Monkey = struct {
     divisor: usize,
     if_true: usize,
     if_false: usize,
+    inspections: usize = 0,
 };
 const Op = enum { add, mul };
 const Operation = struct {
@@ -54,7 +55,7 @@ const Operation = struct {
 
 pub fn main() !void {
     const input: []Monkey = blk: {
-        // var lines = tokenize(u8, example, "\r\n");
+        //var lines = tokenize(u8, example, "\r\n");
         var lines = tokenize(u8, data, "\r\n");
         var monkeys = List(Monkey).init(gpa);
         var monkey_index: usize = 0;
@@ -137,49 +138,85 @@ pub fn main() !void {
         break :blk monkeys.toOwnedSlice();
     }; // end of parse input
 
-    // print parsed input
-    for (input) |monkey, index| {
-        print("Monkey {d}\n", .{index});
-        print("  Starting items: {d}\n", .{monkey.items.items});
-        print("  {}\n", .{monkey.operation});
-        print("  Test: divisible by {d}\n", .{monkey.divisor});
-        print("    If true: throw to monkey {d}\n", .{monkey.if_true});
-        print("    If true: throw to monkey {d}\n", .{monkey.if_false});
-        print("\n", .{});
-    }
-
     // part 1
     {
         // fill out state with input
         var monkeys: []Monkey = blk: {
             var list = List(Monkey).init(gpa);
-            for (input) |old_monkey| {
-                var new_monkey: Monkey = old_monkey;
-                new_monkey.items = try List(usize).initCapacity(gpa, old_monkey.items.items.len);
-                new_monkey.items.appendSliceAssumeCapacity(old_monkey.items.items);
+            for (input) |*old_monkey| {
+                var new_monkey: Monkey = old_monkey.*;
+                new_monkey.items = try old_monkey.items.clone();
                 try list.append(new_monkey);
-
-                // TODO: not sure why this doesn't work
-                // var new_monkey: Monkey = old_monkey;
-                // new_monkey.items = old_monkey.items.clone();
-                // try list.append(new_monkey);
             }
             break :blk list.toOwnedSlice();
         };
 
+        const num_rounds = 20;
         var round: usize = 0;
-        while (round < 2) : (round += 1) {
-            print("=== Round {d} ===\n", .{round});
-            for (monkeys) |monkey, index| {
-                var items = monkey.items;
-                print("Monkey {d}\n", .{index});
-                for (items.items) |item| {
-                    print("  Monkey inspects an item with a worry level of {d}\n", .{item});
+        while (round < num_rounds) : (round += 1) {
+            //print("=== Round {d} ===\n", .{round});
+            for (monkeys) |*monkey| {
+                //print("Monkey {d}:\n", .{index});
+                for (monkey.items.items) |*item| {
+                    monkey.inspections += 1;
+                    //print("  Monkey inspects an item with a worry level of {d}.\n", .{item.*});
+
+                    // apply operation
+                    switch (monkey.operation.op) {
+                        .mul => {
+                            if (monkey.operation.val) |val| {
+                                item.* *= val;
+                                //print("    Worry level is multiplied by {d} to {d}.\n", .{val, item.*});
+                            } else {
+                                item.* *= item.*;
+                                //print("    Worry level is multiplied by {d} to {d}.\n", .{item.*, item.*});
+                            }
+                        },
+                        .add => {
+                            if (monkey.operation.val) |val| {
+                                item.* += val;
+                                //print("    Worry level increases by {d} to {d}.\n", .{val, item.*});
+                            } else {
+                                item.* += item.*;
+                                //print("    Worry level increases by {d} to {d}.\n", .{item.*, item.*});
+                            }
+                        },
+                    }
+
+                    // apply reduction
+                    item.* /= 3;
+                    //print("    Monkey gets bored with item. Worry level is divided by 3 to {d}\n", .{item.*});
+
+                    // check divisibility
+                    const is_divisible = item.* % monkey.divisor == 0;
+                    if (is_divisible) {
+                        //print("    Current worry level is divisible by {d}.\n", .{monkey.divisor});
+                    } else {
+                        //print("    Current worry level is not divisible by {d}.\n", .{monkey.divisor});
+                    }
+
+                    // transfer item
+                    const next_index = if (is_divisible) monkey.if_true else monkey.if_false;
+                    try monkeys[next_index].items.append(item.*);
+                    //print("    Item with worry level {d} is thrown to monkey {d}.\n", .{item.*, next_index});
                 }
-                // TODO: this doesn't work because
-                try items.resize(0);
+                try monkey.items.resize(0);
             }
         }
+
+        const inspections = blk: {
+            var list = List(usize).init(gpa);
+            for (monkeys) |monkey| {
+                //print("Monkey {d} inspected items {d} times.\n", .{index, monkey.inspections});
+                try list.append(monkey.inspections);
+            }
+            var slice = list.toOwnedSlice();
+            sort(usize, slice, {}, comptime desc(usize));
+            break :blk slice;
+        };
+        const answer_1 = inspections[0] * inspections[1];
+        //print("{d} {d}\n", .{inspections[0], inspections[1]});
+        print("{d}\n", .{answer_1});
     }
 }
 
