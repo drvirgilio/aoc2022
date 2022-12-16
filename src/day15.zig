@@ -130,75 +130,78 @@ pub fn main() !void {
         break :blk list.toOwnedSlice();
     };
 
-    // for each pair, find the ranges of filled values on the test line
-    const test_line = 2000000;
-    var ranges = List(Pair).init(gpa);
-    defer ranges.deinit();
-    for (input) |p| {
-        // print("{d},{d}  {d},{d}\n", .{ p.fst.x, p.fst.y, p.snd.x, p.snd.y });
+    // part 1
+    {
+        // for each pair, find the ranges of filled values on the test line
+        const test_line = 2000000;
+        var ranges = List(Pair).init(gpa);
+        defer ranges.deinit();
+        for (input) |p| {
+            // print("{d},{d}  {d},{d}\n", .{ p.fst.x, p.fst.y, p.snd.x, p.snd.y });
 
-        const dist_beacon_to_sensor = @intCast(isize, p.distance());
-        const dist_line_to_sensor = if (test_line > p.fst.y) test_line - p.fst.y else p.fst.y - test_line;
-        const difference = if (dist_beacon_to_sensor >= dist_line_to_sensor)
-            dist_beacon_to_sensor - dist_line_to_sensor
-        else
-            continue;
-        //const total_in_line = difference * 2 + 1;
-
-        const left = Point{ .x = p.fst.x - difference, .y = test_line };
-        const right = Point{ .x = p.fst.x + difference, .y = test_line };
-        assert(left.distance(p.fst) == dist_beacon_to_sensor);
-        assert(right.distance(p.fst) == dist_beacon_to_sensor);
-        const range: Pair = Pair{ .fst = left, .snd = right };
-
-        try ranges.append(range);
-
-        // print("  beacon to sensor: {d}\n", .{dist_beacon_to_sensor});
-        // print("  line to sensor  : {d}\n", .{dist_line_to_sensor});
-        // print("  difference      : {d}\n", .{difference});
-        // print("  range: {d},{d}  {d},{d}\n", .{ range.fst.x, range.fst.y, range.snd.x, range.snd.y });
-        // print("  count: {d}\n", .{range.range_count()});
-    }
-
-    // merge ranges
-    var i: usize = 0;
-    while (i < ranges.items.len) : (i += 1) {
-        var j: usize = i + 1;
-        while (j < ranges.items.len) : (j += 1) {
-            // print("i:{d} j:{d}\n", .{ i, j });
-            if (ranges.items[i].range_overlap(ranges.items[j])) {
-                ranges.items[i] = ranges.items[i].range_merge(ranges.items[j]);
-                _ = ranges.orderedRemove(j);
-                j = i; // ranges between i and j could now be overlapping with i so we must recheck them by reseting j index
+            const dist_beacon_to_sensor = @intCast(isize, p.distance());
+            const dist_line_to_sensor = if (test_line > p.fst.y) test_line - p.fst.y else p.fst.y - test_line;
+            const difference = if (dist_beacon_to_sensor >= dist_line_to_sensor)
+                dist_beacon_to_sensor - dist_line_to_sensor
+            else
                 continue;
-            } else {
-                continue;
+            //const total_in_line = difference * 2 + 1;
+
+            const left = Point{ .x = p.fst.x - difference, .y = test_line };
+            const right = Point{ .x = p.fst.x + difference, .y = test_line };
+            assert(left.distance(p.fst) == dist_beacon_to_sensor);
+            assert(right.distance(p.fst) == dist_beacon_to_sensor);
+            const range: Pair = Pair{ .fst = left, .snd = right };
+
+            try ranges.append(range);
+
+            // print("  beacon to sensor: {d}\n", .{dist_beacon_to_sensor});
+            // print("  line to sensor  : {d}\n", .{dist_line_to_sensor});
+            // print("  difference      : {d}\n", .{difference});
+            // print("  range: {d},{d}  {d},{d}\n", .{ range.fst.x, range.fst.y, range.snd.x, range.snd.y });
+            // print("  count: {d}\n", .{range.range_count()});
+        }
+
+        // merge ranges
+        var i: usize = 0;
+        while (i < ranges.items.len) : (i += 1) {
+            var j: usize = i + 1;
+            while (j < ranges.items.len) : (j += 1) {
+                // print("i:{d} j:{d}\n", .{ i, j });
+                if (ranges.items[i].range_overlap(ranges.items[j])) {
+                    ranges.items[i] = ranges.items[i].range_merge(ranges.items[j]);
+                    _ = ranges.orderedRemove(j);
+                    j = i; // ranges between i and j could now be overlapping with i so we must recheck them by reseting j index
+                    continue;
+                } else {
+                    continue;
+                }
             }
         }
-    }
 
-    // create set of beacons
-    var beacons = Map(Point, void).init(gpa);
-    for (input) |pair| {
-        const beacon = pair.snd;
-        try beacons.put(beacon, {});
-    }
-
-    // for all the ranges, count the number of places that connot be a beacon
-    var answer: isize = 0;
-    for (ranges.items) |range| {
-        const width = range.snd.x - range.fst.x + 1;
-        // find number of beacons within the range
-        var beacon_count: isize = 0;
-        var beacon_it = beacons.keyIterator();
-        while (beacon_it.next()) |beacon| {
-            if (range.range_contains(beacon.*)) {
-                beacon_count += 1;
-            }
+        // create set of beacons
+        var beacons = Map(Point, void).init(gpa);
+        for (input) |pair| {
+            const beacon = pair.snd;
+            try beacons.put(beacon, {});
         }
-        answer += width - beacon_count;
+
+        // for all the ranges, count the number of places that connot be a beacon
+        var answer: isize = 0;
+        for (ranges.items) |range| {
+            const width = range.snd.x - range.fst.x + 1;
+            // find number of beacons within the range
+            var beacon_count: isize = 0;
+            var beacon_it = beacons.keyIterator();
+            while (beacon_it.next()) |beacon| {
+                if (range.range_contains(beacon.*)) {
+                    beacon_count += 1;
+                }
+            }
+            answer += width - beacon_count;
+        }
+        print("{d}\n", .{answer});
     }
-    print("{d}\n", .{answer});
 }
 
 // Useful stdlib functions
