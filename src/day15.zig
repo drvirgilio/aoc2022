@@ -130,6 +130,27 @@ pub fn main() !void {
         break :blk list.toOwnedSlice();
     };
 
+    // create set of sensors
+    const sensors: Map(Point, void) = blk: {
+        var sensors_ = Map(Point, void).init(gpa);
+        for (input) |pair| {
+            const sensor = pair.fst;
+            try sensors_.put(sensor, {});
+        }
+        break :blk sensors_;
+    };
+    _ = sensors;
+
+    // create set of beacons
+    const beacons: Map(Point, void) = blk: {
+        var beacons_ = Map(Point, void).init(gpa);
+        for (input) |pair| {
+            const beacon = pair.snd;
+            try beacons_.put(beacon, {});
+        }
+        break :blk beacons_;
+    };
+
     // part 1
     {
         // for each pair, find the ranges of filled values on the test line
@@ -179,13 +200,6 @@ pub fn main() !void {
             }
         }
 
-        // create set of beacons
-        var beacons = Map(Point, void).init(gpa);
-        for (input) |pair| {
-            const beacon = pair.snd;
-            try beacons.put(beacon, {});
-        }
-
         // for all the ranges, count the number of places that connot be a beacon
         var answer: isize = 0;
         for (ranges.items) |range| {
@@ -201,6 +215,88 @@ pub fn main() !void {
             answer += width - beacon_count;
         }
         print("{d}\n", .{answer});
+        assert(answer == 4951427);
+    }
+
+    // part 2
+    {
+        var answer: isize = undefined;
+        const upper_bound = 4000000;
+        // var row: isize = 40000 * 64;
+        var row: isize = 0;
+        outer: while (row < upper_bound) : (row += 1) {
+            // for each pair, find the ranges of filled values on the current row
+            var ranges = List(Pair).init(gpa);
+            defer ranges.deinit();
+            for (input) |p| {
+                // print("{d},{d}  {d},{d}\n", .{ p.fst.x, p.fst.y, p.snd.x, p.snd.y });
+
+                const dist_beacon_to_sensor = @intCast(isize, p.distance());
+                const dist_line_to_sensor = if (row > p.fst.y) row - p.fst.y else p.fst.y - row;
+                const difference = if (dist_beacon_to_sensor >= dist_line_to_sensor)
+                    dist_beacon_to_sensor - dist_line_to_sensor
+                else
+                    continue;
+                //const total_in_line = difference * 2 + 1;
+
+                const left = Point{ .x = p.fst.x - difference, .y = row };
+                const right = Point{ .x = p.fst.x + difference, .y = row };
+                assert(left.distance(p.fst) == dist_beacon_to_sensor);
+                assert(right.distance(p.fst) == dist_beacon_to_sensor);
+                const range: Pair = Pair{ .fst = left, .snd = right };
+
+                try ranges.append(range);
+
+                // print("  beacon to sensor: {d}\n", .{dist_beacon_to_sensor});
+                // print("  line to sensor  : {d}\n", .{dist_line_to_sensor});
+                // print("  difference      : {d}\n", .{difference});
+                // print("  range: {d},{d}  {d},{d}\n", .{ range.fst.x, range.fst.y, range.snd.x, range.snd.y });
+                // print("  count: {d}\n", .{range.range_count()});
+            }
+
+            // merge ranges
+            var i: usize = 0;
+            while (i < ranges.items.len) : (i += 1) {
+                var j: usize = i + 1;
+                while (j < ranges.items.len) : (j += 1) {
+                    // print("i:{d} j:{d}\n", .{ i, j });
+                    if (ranges.items[i].range_overlap(ranges.items[j])) {
+                        ranges.items[i] = ranges.items[i].range_merge(ranges.items[j]);
+                        _ = ranges.orderedRemove(j);
+                        j = i; // ranges between i and j could now be overlapping with i so we must recheck them by reseting j index
+                        continue;
+                    } else {
+                        continue;
+                    }
+                }
+            }
+
+            // for all the ranges, count the number of places that connot be a beacon
+            for (ranges.items) |range| {
+                // put bounds on range for accurate count
+                const lower = if (range.fst.x < 0) 0 else range.fst.x;
+                const upper = if (range.snd.x > upper_bound) upper_bound else range.snd.x;
+                const width = upper - lower + 1;
+                const new_range = Pair{ .fst = Point{ .x = lower, .y = range.fst.y }, .snd = Point{ .x = upper, .y = range.fst.y } };
+                if (width < upper_bound + 1) {
+                    // print("\nrange: {d},{d}  {d},{d}\n", .{ new_range.fst.x, new_range.fst.y, new_range.snd.x, new_range.snd.y });
+                    const is_fst = new_range.fst.x > 0;
+                    const is_snd = new_range.snd.x < upper_bound;
+                    if (is_fst) {
+                        answer = new_range.fst.x - 1;
+                        break :outer;
+                    } else if (is_snd) {
+                        answer = new_range.snd.x + 1;
+                        break :outer;
+                    } else unreachable;
+                }
+            }
+            if (@mod(row, upper_bound / 100) == 0) {
+                print("\r{d}%", .{@divFloor(row, upper_bound / 100)});
+            }
+        }
+        print("\r{d}\n", .{answer});
+        assert(answer == 3257428);
     }
 }
 
